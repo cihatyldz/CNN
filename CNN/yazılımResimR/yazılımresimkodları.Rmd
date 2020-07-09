@@ -1,0 +1,184 @@
+---
+title: "yazılım araba-uçak"
+output: html_document
+---
+
+# Load Packages
+```{r}
+library(EBImage)
+library(tensorflow)
+library(BiocManager)
+library(keras)
+```
+
+# To install EBimage package, you can run following 2 lines;
+# install.packages("BiocManager") 
+# BiocManager::install("EBImage")
+
+# Resimlerin Okunmasi
+```{r}
+setwd('C:/Users/AsusPc/Desktop/yazılımresim')
+pics <- c('p1.jpg', 'p2.jpg', 'p3.jpg', 'p4.jpg', 'p5.jpg', 'p6.jpg',
+          'c1.jpg', 'c2.jpg', 'c3.jpg', 'c4.jpg', 'c5.jpg', 'c6.jpg')
+mypic <- list()
+for (i in 1:12) {mypic[[i]] <- readImage(pics[i])}
+```
+
+# Araştırma ( piksel incelemesi vs )
+
+```{r}
+print(mypic[[1]])
+display(mypic[[8]])
+summary(mypic[[1]])
+hist(mypic[[2]])
+str(mypic)
+```
+
+# Yeniden Boyutlandirma ( Resize )
+
+```{r}
+for (i in 1:12) {mypic[[i]] <- resize(mypic[[i]], 28, 28)}
+```
+
+# Yeniden Sekillendirme ( Reshape )
+
+```{r}
+for (i in 1:12) {mypic[[i]] <- array_reshape(mypic[[i]], c(28, 28, 3))}
+```
+
+# Satirlari Birlestirme ( Row Bind )
+
+```{r}
+trainx <- NULL
+for (i in 7:11) {trainx <- rbind(trainx, mypic[[i]])}
+str(trainx)
+testx <- rbind(mypic[[6]], mypic[[12]])
+trainy <- c(0,0,0,0,0,1,1,1,1,1 )
+testy <- c( 0 , 1)  # 0 uçak 1 araba
+```
+
+# One Hot Encoding
+
+```{r}
+trainLabels <- to_categorical(trainy)
+testLabels <- to_categorical(testy)
+```
+
+# Model
+
+```{r warning=FALSE}
+model <- keras_model_sequential()
+model %>%
+         layer_dense(units = 256, activation = 'relu', input_shape = c(2352)) %>%
+         layer_dense(units = 128, activation = 'relu') %>%
+         layer_dense(units = 2, activation = 'softmax')
+str(trainx)
+summary(model)
+```
+
+# Modeli Derleme  ( Compile ) 
+```{r}
+model %>%
+         compile(loss = 'binary_crossentropy',
+                 optimizer = optimizer_rmsprop(),
+                 metrics = c('accuracy'))
+```
+
+# Uygun Model  ( Fit Model )
+
+```{r}
+history <- model %>%
+         fit(trainx,
+             trainLabels,
+             epochs = 30,
+             batch_size = 32,
+             validation_split = 0.2)
+
+```
+# üstteki grafik loss - alttaki grafik accurary kısmımız
+
+```{r}
+plot(history)
+```
+
+
+
+# Train Veri Seti İçin Tahmin Ve Değerlendirme ( Evaluation and Prediction - Train data ) 
+
+
+```{r}
+# model %>% evaluate(trainx , trainLabels)
+```
+
+```{r}
+pred <- model %>% predict_classes(trainx)
+pred
+```
+
+```{r}
+table(Predicted = pred, Actual = trainy)
+```
+
+```{r}
+prob <- model %>% predict_proba(trainx)
+prob
+```
+
+```{r}
+cbind(prob, Prected = pred, Actual= trainy)
+```
+
+
+# Test Veri Seti İçin Tahmin Ve Değerlendirme ( Evaluation and Prediction - Test data )
+
+```{r}
+model %>% evaluate(testx , testLabels)
+pred1 <- model %>% predict_classes(testx)
+pred1
+```
+
+```{r}
+table(Predicted = pred1, Actual = testy)
+```
+
+```{r}
+display(mypic[[6]])
+display(mypic[[12]])
+```
+
+```{r}
+prob1 <- model %>% predict_proba(testx)
+prob1
+```
+
+```{r}
+cbind(prob1, Prected = pred1, Actual= testy)
+```
+
+
+
+## SORULAR 
+
+# 1- Derin öğrenme kim tarafından ve ne zaman yaygınlaşmıştır ?
+
+# 2- Kaç farklı kestirim türü vardır  ? 
+
+# 3- Kaç tip algılama türü vardır ? 
+
+# 4- Yaygın olarak kullanılan aktivasyon fonksiyonları nelerdir ?
+
+# 5- CNN icin kullanilan temel kutuphane nedir ? 
+
+
+
+
+
+
+
+
+
+
+
+
+
+

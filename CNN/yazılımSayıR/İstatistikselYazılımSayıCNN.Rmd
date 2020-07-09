@@ -1,0 +1,237 @@
+---
+title: "CNNN Sunum"
+output: html_document
+---
+
+## MNIST Datası ile CNN Analizi
+
+```{r}
+library(keras)  # CNN için kullandığımız kütüphane
+```
+
+### Veri Setinin Girilmesi
+
+```{r}
+mnist <- dataset_mnist()   # Model kuracağımız kütüphane
+```
+```{r}
+str(mnist)
+```
+
+
+### Veri Setinin Test - Train Ayrılması
+```{r}
+trainx <- mnist$train$x
+trainy <- mnist$train$y
+testx <- mnist$test$x
+testy <- mnist$test$y
+
+```
+
+
+### Resimlerimizin Okutulması
+```{r}
+par(mfrow = c(3,3))
+for (i in 1:9) plot(as.raster(trainx[i,,], max = 255))
+par(mfrow= c(1,1))
+```
+### Veri seti mnist icindeki ilk 9 degerimizi gostermek istedik.
+
+
+
+
+### Farklı Rakam Yazılışlarının Okutulması
+```{r}
+a <- c(1, 12, 36, 48, 66, 101, 133, 139, 146)
+par(mfrow = c(3,3))
+for (i in a) plot(as.raster(trainx[i,,], max = 255))
+par(mfrow= c(1,1))
+```
+### mnist verisi uzerinde sayiların goruntusunu gormek icin bu kodu okuttuk.
+
+
+
+
+
+### Yeniden Biçimlendirme ve Ölçeklendirme ( Reshape & rescale )
+```{r}
+trainx <- array_reshape(trainx, c(nrow(trainx), 784))
+testx <- array_reshape(testx, c(nrow(testx), 784))
+trainx <- trainx / 255
+testx <- testx /255
+```
+
+### One hot encoding
+
+```{r}
+trainy <- to_categorical(trainy, 10)
+testy <- to_categorical(testy, 10)
+```
+
+### Model Oluşumu 
+
+```{r}
+model <- keras_model_sequential()
+model %>% 
+         layer_dense(units = 512, activation = 'relu', input_shape = c(784)) %>% 
+         layer_dropout(rate = 0.4) %>% 
+         layer_dense(units= 256, activation = 'relu') %>% 
+         layer_dropout(rate = 0.3) %>% 
+         layer_dense(units = 10, activation = 'softmax')
+```
+
+### Veriyi Derleme ( Compile ) Islemi
+
+```{r}
+model %>% 
+         compile(loss = 'categorical_crossentropy',
+                 optimizer = optimizer_rmsprop(),
+                 metrics = 'accuracy')
+```
+
+### Modelin Grafikler Oluşumları ( Fit model )
+
+```{r}
+history <- model %>% 
+         fit(trainx,
+             trainy,
+             epochs = 30,   # donem noktaları (referans noktasi)
+             batch_size = 32,
+             validation_split = 0.2)
+plot(history)
+```
+
+### Üstteki grafigimiz kayıp ( loss ) degerlerimizi gostermektedir.
+### Alttaki grafigimiz ise dogruluk payı (accuracy ) degerlerini gostermektedir. 
+
+
+### Test Veri Seti İçin Tahmin Ve Değerlendirme ( Evaluation and Prediction - Test data )
+
+```{r}
+model %>% evaluate(testx, testy)
+```
+
+```{r}
+pred <- model %>% predict_classes(testx)
+pred
+```
+
+```{r}
+table(Predicted = pred, Actual = mnist$test$y)
+```
+
+```{r}
+prob <- model %>% predict_proba(testx)
+prob
+```
+
+```{r}
+cbind(prob, Predicted_class = pred, Actual = mnist$test$y)[1:5,]
+```
+
+### Deeper Network
+
+```{r}
+model1 <- keras_model_sequential()
+model1 %>% 
+         layer_dense(units = 256, activation = 'relu', input_shape = c(784)) %>% 
+         layer_dropout(rate = 0.4) %>% 
+         layer_dense(units= 128, activation = 'relu') %>% 
+         layer_dropout(rate = 0.3) %>% 
+         layer_dense(units= 64, activation = 'relu') %>% 
+         layer_dropout(rate = 0.2) %>%
+         layer_dense(units = 10, activation = 'softmax')
+summary(model1)
+
+#256 * 784 + 256 = 200960 parametre sonucunu manuel elde etme
+```
+
+```{r}
+model1 %>% 
+         compile(loss = 'categorical_crossentropy',
+                 optimizer = optimizer_rmsprop(),
+                 metrics = 'accuracy')
+
+history1 <- model1 %>% 
+         fit(trainx,
+             trainy,
+             epochs = 30,
+             batch_size = 32,
+             validation_split = 0.2)
+plot(history1)
+```
+
+```{r}
+model1 %>% evaluate(testx, testy)
+pred1 <- model1 %>% predict_classes(testx)
+table(Predicted = pred1, Actual = mnist$test$y)
+
+prob1 <- model1 %>% predict_proba(testx)
+cbind(prob1, Predicted_class = pred1, Actual = mnist$test$y)[1:5,]
+```
+
+
+
+### Kullanacağımız Rakamlar ile CNN Oluşturma
+
+```{r}
+library(EBImage)
+setwd('C:/Users/AsusPc/Desktop/yazılımSayıR')
+temp = list.files(pattern = "*.jpg")
+mypic <- list()
+for (i in 1:length(temp)) {mypic[[i]] <- readImage(temp[[i]])}
+
+par(mfrow = c(3,2))
+for (i in 1:length(temp)) plot(mypic[[i]])
+par(mfrow = c(1,1))
+str(mypic)
+
+for (i in 1:length(temp)) {colorMode(mypic[[i]]) <- Grayscale}
+for (i in 1:length(temp)) {mypic[[i]] <- 1-mypic[[i]]}
+for (i in 1:length(temp)) {mypic[[i]] <- resize(mypic[[i]], 28, 28)}
+for (i in 1:length(temp)) {mypic[[i]] <- array_reshape(mypic[[i]], c(28,28,3))}
+new <- NULL
+for (i in 1:length(temp)) {new <- rbind(new, mypic[[i]])}
+newx <- new[,1:784]
+newy <- c(7, 5,2,0, 5, 3)
+str(new)
+28*28*3
+```
+
+### Tahmin Değerimiz ( Prediction )
+```{r}
+pred2 <- model %>% predict_classes(newx)
+pred2 # çıktı değerimiz
+```
+
+```{r}
+table(Predicted = pred2, Actual = newy)
+```
+
+```{r}
+prob2 <- model %>% predict_proba(newx)
+prob2
+```
+
+```{r}
+cbind(prob2, Predicted = pred, Actual = newy)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
